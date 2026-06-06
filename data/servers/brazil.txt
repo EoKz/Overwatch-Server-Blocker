@@ -1,0 +1,16 @@
+# Generated from Google Cloud cloud.json creationTime 2026-06-05T19:10:17.727572 plus curated OW2 community/project ranges.
+# Keep one IP, CIDR, or start-end range per line.
+34.39.128.0/17
+34.95.128.0/17
+34.104.80.0/21
+34.124.16.0/21
+34.151.0.0/18
+34.151.192.0/18
+35.198.0.0/18
+35.199.64.0/18
+35.215.192.0/18
+35.220.40.0/24
+35.235.0.0/20
+35.242.40.0/24
+35.247.192.0/18
+2600:1900:40f0::/44
