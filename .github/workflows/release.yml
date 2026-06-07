@@ -42,19 +42,21 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $dist = "dist"
-          $asset = "owsvblocker-$tag-windows-x64.zip"
+          $zipAsset = "owsvblocker-$tag-windows-x64.zip"
+          $exeAsset = "owsvblocker-$tag-windows-x64.exe"
 
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
           Copy-Item "target\release\owsvblocker.exe" "$dist\owsvblocker.exe"
-          Copy-Item "README.md" "$dist\README.md"
-          Compress-Archive -Path "$dist\*" -DestinationPath $asset -Force
+          Copy-Item "target\release\owsvblocker.exe" $exeAsset
+          Compress-Archive -Path "$dist\owsvblocker.exe" -DestinationPath $zipAsset -Force
 
-          "RELEASE_ASSET=$asset" >> $env:GITHUB_ENV
+          "RELEASE_ZIP=$zipAsset" >> $env:GITHUB_ENV
+          "RELEASE_EXE=$exeAsset" >> $env:GITHUB_ENV
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" "$env:RELEASE_ASSET" `
+          gh release create "${{ github.ref_name }}" "$env:RELEASE_ZIP" "$env:RELEASE_EXE" `
             --title "OW Server Blocker ${{ github.ref_name }}" `
             --generate-notes

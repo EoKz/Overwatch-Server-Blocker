@@ -41,6 +41,7 @@ impl WindowsFirewall {
                 is_admin,
                 rule_active: false,
                 active_regions: Vec::new(),
+                active_targets: Vec::new(),
                 active_address_count: 0,
                 application_path: None,
                 note: String::from("No active OWServerBlocker rule found."),
@@ -64,7 +65,8 @@ impl WindowsFirewall {
             })
             .unwrap_or_default();
 
-        let active_regions = decode_regions(&description);
+        let active_regions = decode_values(&description, "regions=");
+        let active_targets = decode_values(&description, "targets=");
         let active_address_count = count_remote_addresses(&remote_addresses);
 
         Ok(FirewallStatus {
@@ -72,6 +74,7 @@ impl WindowsFirewall {
             is_admin,
             rule_active: enabled && active_address_count > 0,
             active_regions,
+            active_targets,
             active_address_count,
             application_path,
             note: if enabled {
@@ -114,6 +117,7 @@ impl WindowsFirewall {
         let group = BSTR::from(GROUP_NAME);
         let description = BSTR::from(encode_description(
             &plan.selected_regions,
+            &plan.selected_targets,
             plan.remote_addresses.len(),
         ));
         let application_path = BSTR::from(
@@ -172,6 +176,7 @@ impl FirewallBackend for WindowsFirewall {
                     is_admin: is_admin(),
                     rule_active: false,
                     active_regions: Vec::new(),
+                    active_targets: Vec::new(),
                     active_address_count: 0,
                     application_path: None,
                     note: String::from("Could not read Windows Firewall status."),
@@ -263,22 +268,23 @@ fn remove_rule_if_exists(
     unsafe { rules.Remove(&name).map_err(error_message) }
 }
 
-fn encode_description(regions: &[String], address_count: usize) -> String {
+fn encode_description(regions: &[String], targets: &[String], address_count: usize) -> String {
     format!(
-        "{DESCRIPTION_PREFIX}\nregions={}\naddresses={address_count}",
-        regions.join(";")
+        "{DESCRIPTION_PREFIX}\nregions={}\ntargets={}\naddresses={address_count}",
+        regions.join(";"),
+        targets.join(";")
     )
 }
 
-fn decode_regions(description: &str) -> Vec<String> {
+fn decode_values(description: &str, prefix: &str) -> Vec<String> {
     description
         .lines()
-        .find_map(|line| line.strip_prefix("regions="))
-        .map(|regions| {
-            regions
+        .find_map(|line| line.strip_prefix(prefix))
+        .map(|values| {
+            values
                 .split(';')
                 .map(str::trim)
-                .filter(|region| !region.is_empty())
+                .filter(|value| !value.is_empty())
                 .map(ToString::to_string)
                 .collect()
         })
@@ -303,13 +309,18 @@ fn error_message(error: windows::core::Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{count_remote_addresses, decode_regions, encode_description};
+    use super::{count_remote_addresses, decode_values, encode_description};
 
     #[test]
     fn description_roundtrip_keeps_regions() {
         let regions = vec!["Brazil".to_string(), "Australia".to_string()];
-        let description = encode_description(&regions, 12);
-        assert_eq!(decode_regions(&description), regions);
+        let targets = vec![
+            "google:southamerica-east1".to_string(),
+            "blizzard:syd2".to_string(),
+        ];
+        let description = encode_description(&regions, &targets, 12);
+        assert_eq!(decode_values(&description, "regions="), regions);
+        assert_eq!(decode_values(&description, "targets="), targets);
     }
 
     #[test]
